@@ -9,7 +9,12 @@ default_args = {
 }
 
 def greet(name, age):
-    print(f"Hello World!, my name is {name} and I am {age} years old.")
+    message = f"Hello World!, my name is {name} and I am {age} years old."
+    return message
+
+def get_name(ti):
+    name_message = ti.xcom_pull(task_ids="T1")
+    print(name_message)
 
 with DAG(
     dag_id='DAG002',
@@ -26,3 +31,10 @@ with DAG(
             'age': 15
         }
     )
+
+    task2 = PythonOperator(
+        task_id="T2",
+        python_callable=get_name
+    )
+
+    task1 >> task2
