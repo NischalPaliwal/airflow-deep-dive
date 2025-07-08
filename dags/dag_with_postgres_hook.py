@@ -12,23 +12,28 @@ default_args = {
 
 def postgres_to_s3():
     hook = PostgresHook(postgres_conn_id="postgres_test")
-    connection = hook.get_conn()
-    cursor = connection.cursor()
-    cursor.execute("select * from employees")
     
-    with open('data/employee_data.csv', "w") as file:
-        csv_writer = csv.writer(file)
-        csv_writer.writerow([i[0] for i in cursor.description])
-        csv_writer.writerows(cursor)
+    # Using hook.run to execute query and get results
+    records = hook.run("SELECT * FROM employees")
     
-    cursor.close()
-    connection.close()
+    # Get column names separately (hook run doesn't return description by default)
+    conn = hook.get_conn()
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM employees LIMIT 0")  # Get schema without data
+        column_names = [desc[0] for desc in cursor.description]
+    conn.close()
+    
+    # Write to CSV
+    with open('data/employee_data.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(column_names)
+        writer.writerows(records)
 
 with DAG(
     dag_id="DAG008",
     default_args=default_args,
     start_date=datetime(2025, 7, 1, 15),
-    schedule='@weekly'
+    schedule_interval='@weekly'
 ) as dag:
     task1 = PythonOperator(
         task_id="postgres_to_s3",
